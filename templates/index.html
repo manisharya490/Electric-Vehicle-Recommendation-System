@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EV Match | Smart Electric Vehicle Recommendations</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔋</text></svg>" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-bolt"></i>
+          <span>EV Match</span>
+        </div>
+        <p class="tagline">Find your perfect electric vehicle</p>
+      </div>
+
+      <div class="filter-section">
+        <h2><i class="fas fa-sliders-h"></i> Filter Options</h2>
+
+        <div class="filter-group">
+          <label for="daily-distance">Daily Commute</label>
+          <div class="slider-container">
+            <input type="range" id="daily-distance" min="10" max="500" value="50" step="10" />
+            <div class="slider-value" id="daily-distance-value">50 km</div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Seating Capacity</label>
+          <div class="dual-slider-container">
+            <div class="slider-container">
+              <span class="slider-label">Min</span>
+              <input type="range" id="seats-min" min="2" max="9" value="4" step="1" />
+              <div class="slider-value" id="seats-min-value">4</div>
+            </div>
+            <div class="slider-container">
+              <span class="slider-label">Max</span>
+              <input type="range" id="seats-max" min="2" max="9" value="5" step="1" />
+              <div class="slider-value" id="seats-max-value">5</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="body-type">Vehicle Type</label>
+          <div class="select-wrapper">
+            <select id="body-type">
+              {% for type in body_types %}
+              <option value="{{ type }}">{{ type }}</option>
+              {% endfor %}
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="drivetrain">Drivetrain</label>
+          <div class="select-wrapper">
+            <select id="drivetrain">
+              {% for drivetrain in drivetrains %}
+              <option value="{{ drivetrain }}">{{ drivetrain }}</option>
+              {% endfor %}
+            </select>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Range (km)</label>
+          <div class="dual-slider-container">
+            <div class="slider-container">
+              <span class="slider-label">Min</span>
+              <input type="range" id="range-min" min="100" max="800" value="200" step="50" />
+              <div class="slider-value" id="range-min-value">200 km</div>
+            </div>
+            <div class="slider-container">
+              <span class="slider-label">Max</span>
+              <input type="range" id="range-max" min="100" max="800" value="500" step="50" />
+              <div class="slider-value" id="range-max-value">500 km</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="find-evs" class="primary-button">
+        <i class="fas fa-search"></i> Find My EV Match
+      </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content-area">
+      <header class="content-header">
+        <h1><i class="fas fa-chart-line"></i> Recommended EVs</h1>
+        <div class="results-count" id="results-count">0 matches found</div>
+      </header>
+      <div class="results-grid" id="results-container">
+        <div class="loading-state" id="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Finding your perfect EV matches...</p>
+        </div>
+        <div class="no-results" id="no-results" style="display: none;">
+          <i class="fas fa-car-crash"></i>
+          <h3>No matches found</h3>
+          <p>Try adjusting your filters</p>
+          <button class="secondary-button" id="reset-filters">Reset Filters</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/js/script.js"></script>
+  <script>
+    (function () {
+      if (!window.chatbase || window.chatbase("getState") !== "initialized") {
+        window.chatbase = (...arguments) => {
+          if (!window.chatbase.q) {
+            window.chatbase.q = [];
+          }
+          window.chatbase.q.push(arguments);
+        };
+        window.chatbase = new Proxy(window.chatbase, {
+          get(target, prop) {
+            if (prop === "q") {
+              return target.q;
+            }
+            return (...args) => target(prop, ...args);
+          },
+        });
+      }
+      const onLoad = function () {
+        const script = document.createElement("script");
+        script.src = "https://www.chatbase.co/embed.min.js";
+        script.id = "PrD2WvAfZKuLEYb9loZHR";
+        script.domain = "www.chatbase.co";
+        document.body.appendChild(script);
+      };
+      if (document.readyState === "complete") {
+        onLoad();
+      } else {
+        window.addEventListener("load", onLoad);
+      }
+    })();
+  </script>
+</body>
+</html>
