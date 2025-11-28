@@ -64,7 +64,7 @@ The app will be available at [http://127.0.0.1:5000](http://127.0.0.1:5000)
 ├── static/
 │   ├── css/style.css       # Main stylesheet
 │   ├── js/script.js        # Frontend logic
-│   └── screenshorts/       # Screenshots for README
+│
 ├── templates/
 │   └── index.html          # Main HTML template
 ├── ev_recommendation_workflow.ipynb  # Data science workflow and feature selection
