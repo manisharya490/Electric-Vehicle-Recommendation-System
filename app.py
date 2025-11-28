@@ -13,12 +13,12 @@ def load_data():
     # Clean missing values
     df['towing_capacity_kg'] = df.get('towing_capacity_kg', 0).fillna(0)
     df['number_of_cells'] = df.get('number_of_cells', 0).fillna(df['number_of_cells'].median())
+
     df['cargo_volume_l'] = pd.to_numeric(
-        df.get('cargo_volume_l', 300).astype(str).str.replace('\D', '', regex=True),
+        df.get('cargo_volume_l', 300).astype(str).str.replace(r'\D', '', regex=True),
         errors='coerce'
     ).fillna(300)
 
-    # Ensure necessary fields
     for col in ['fast_charging_power_kw_dc', 'acceleration_0_100_s', 'seats']:
         df[col] = pd.to_numeric(df.get(col, 0), errors='coerce').fillna(0)
 
@@ -46,18 +46,23 @@ def get_ev_image_url(brand, model):
 
 
 def knn_recommend(df, user_input, k=10):
-    features = ['range_km', 'efficiency_km_per_kWh', 'fast_charging_power_kw_dc',
-                'price_per_km', 'acceleration_0_100_s', 'seats']
+    features = [
+        'range_km', 'efficiency_km_per_kWh', 'fast_charging_power_kw_dc',
+        'price_per_km', 'acceleration_0_100_s', 'seats'
+    ]
 
     scaler = MinMaxScaler()
     df_scaled = scaler.fit_transform(df[features])
 
-    input_vector = np.array([[user_input['range_min'],
-                               user_input.get('efficiency', 6),
-                               user_input.get('fast_charging_kw', 50),
-                               user_input.get('price_per_km', 0.05),
-                               user_input.get('acceleration', 7),
-                               user_input['seats_min']]])
+    input_vector = np.array([[
+        user_input['range_min'],
+        user_input.get('efficiency', 6),
+        user_input.get('fast_charging_kw', 50),
+        user_input.get('price_per_km', 0.05),
+        user_input.get('acceleration', 7),
+        user_input['seats_min']
+    ]])
+
     input_vector_scaled = scaler.transform(input_vector)
 
     knn = NearestNeighbors(n_neighbors=k, metric='euclidean')
@@ -83,10 +88,44 @@ def api_recommend():
         df = load_data()
         data = request.get_json()
         print("Received input:", data)
-        recommendations = knn_recommend(df, data, k=data.get('top_n', 6))
+
+        # Filter body type
+        if data.get('body_type') not in ['', None, 'Any']:
+            df = df[df['car_body_type'].astype(str).str.lower() == data['body_type'].lower()]
+
+        # Filter drivetrain
+        if data.get('drivetrain') not in ['', None, 'Any']:
+            df = df[df['drivetrain'].astype(str).str.lower() == data['drivetrain'].lower()]
+
+        # Seat filtering
+        if data.get('seats_min'):
+            df = df[df['seats'] >= int(data['seats_min'])]
+        if data.get('seats_max'):
+            df = df[df['seats'] <= int(data['seats_max'])]
+
+        # Range filtering
+        if data.get('range_min'):
+            df = df[df['range_km'] >= int(data['range_min'])]
+        if data.get('range_max'):
+            df = df[df['range_km'] <= int(data['range_max'])]
+
+        if df.empty:
+            return jsonify([])
+
+        knn_input = {
+            'range_min': int(data.get('range_min', df['range_km'].min())),
+            'efficiency': float(data.get('efficiency', df['efficiency_km_per_kWh'].mean())),
+            'fast_charging_kw': float(data.get('fast_charging_kw', df['fast_charging_power_kw_dc'].mean())),
+            'price_per_km': float(data.get('price_per_km', df['price_per_km'].mean())),
+            'acceleration': float(data.get('acceleration', df['acceleration_0_100_s'].mean())),
+            'seats_min': int(data.get('seats_min', df['seats'].min())),
+        }
+
+        recommendations = knn_recommend(df, knn_input, k=data.get('top_n', 6))
         return jsonify(recommendations)
+
     except Exception as e:
-        print("Error during recommendation:", str(e))
+        print("Error during recommendation:", e)
         return jsonify({"error": str(e)}), 500
 
 
