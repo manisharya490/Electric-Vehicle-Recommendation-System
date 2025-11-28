@@ -77,7 +77,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetFilters() {
-        // Reset all filter values to defaults
         dom.dailyDistance.value = 50;
         dom.seatsMin.value = 4;
         dom.seatsMax.value = 5;
@@ -85,11 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
         dom.rangeMax.value = 500;
         dom.bodyType.selectedIndex = 0;
         dom.drivetrain.selectedIndex = 0;
-        
-        // Update displayed values
+
         initValues();
-        
-        // Trigger search with default values
         handleFindEvs(new Event('click'));
     }
 
@@ -104,16 +100,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Main handler
+    // ✅ Main handler (updated with Render URL)
     async function handleFindEvs(e) {
         e.preventDefault();
-        
-        // Show loading state
+
         dom.loading.style.display = 'flex';
         dom.resultsContainer.innerHTML = '';
         dom.noResults.style.display = 'none';
         dom.resultsCount.textContent = 'Searching...';
-        
+
         // Prepare request data
         const requestData = {
             daily_distance: parseInt(dom.dailyDistance.value),
@@ -127,25 +122,28 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            // Simulate network delay for demo purposes
             await new Promise(resolve => setTimeout(resolve, 800));
-            
-            const response = await fetch('/api/recommend', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData)
-            });
-            
+
+            const response = await fetch(
+                "/api/recommend",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(requestData)
+                }
+            );
+
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error("Network response was not ok");
             }
-            
+
             const data = await response.json();
             displayResults(data);
+
         } catch (error) {
-            console.error('Error:', error);
+            console.error("Error:", error);
             showError();
         } finally {
             dom.loading.style.display = 'none';
@@ -154,34 +152,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function displayResults(evs) {
         dom.resultsContainer.innerHTML = '';
-        
+
         if (!evs || evs.length === 0) {
             dom.noResults.style.display = 'flex';
             dom.resultsCount.textContent = '0 matches found';
             return;
         }
-        
+
         dom.resultsCount.textContent = `${evs.length} ${evs.length === 1 ? 'match' : 'matches'} found`;
-        
+
         evs.forEach(ev => {
+
             const starRating = Math.round((ev.score / 115) * 5);
             const stars = '★'.repeat(starRating) + '☆'.repeat(5 - starRating);
-            
+
             const evCard = document.createElement('div');
             evCard.className = 'ev-card';
             evCard.innerHTML = `
-                <div class="ev-image">
-                    <img src="${ev.image_url || 'https://via.placeholder.com/300x180.png?text=EV+Image'}" 
-                         alt="${ev.full_name}"
-                         onerror="handleImageError(this)">
-                    <i class="fas fa-car-side fallback-icon"></i>
-                </div>
                 <div class="ev-content">
                     <div class="ev-header">
                         <h3 class="ev-name">${ev.full_name}</h3>
                         <span class="ev-score">${ev.score.toFixed(1)} ${stars}</span>
                     </div>
-                    
+
                     <div class="ev-specs">
                         <div class="spec-item">
                             <span class="spec-icon"><i class="fas fa-bolt"></i></span>
@@ -190,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="spec-value">${ev.range_km} km</span>
                             </div>
                         </div>
-                        
+
                         <div class="spec-item">
                             <span class="spec-icon"><i class="fas fa-tachometer-alt"></i></span>
                             <div class="spec-details">
@@ -198,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="spec-value">${ev.efficiency_km_per_kWh ? ev.efficiency_km_per_kWh.toFixed(2) : 'N/A'} km/kWh</span>
                             </div>
                         </div>
-                        
+
                         <div class="spec-item">
                             <span class="spec-icon"><i class="fas fa-charging-station"></i></span>
                             <div class="spec-details">
@@ -206,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <span class="spec-value">${ev.fast_charging_power_kw_dc || 'N/A'} kW</span>
                             </div>
                         </div>
-                        
+
                         <div class="spec-item">
                             <span class="spec-icon"><i class="fas fa-stopwatch"></i></span>
                             <div class="spec-details">
@@ -215,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="ev-features">
                         <span class="feature-badge"><i class="fas fa-users"></i> ${ev.seats} seats</span>
                         <span class="feature-badge"><i class="fas fa-cog"></i> ${ev.drivetrain}</span>
@@ -223,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
-            
+
             dom.resultsContainer.appendChild(evCard);
         });
     }
