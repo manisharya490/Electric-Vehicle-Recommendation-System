@@ -33,5 +33,5 @@ The backend is built with **Python (Flask, Pandas, Scikit-learn)**, and the fron
 
 ###  Clone the Repository
 ```bash
-git clone https://github.com/yourusername/ev-recommendation-system.git
+git clone https://github.com/manisharya490/Electric-Vehicle-Recommendation-System.git
 cd ev-recommendation-system
