@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', function() {
         rangeMax: document.getElementById('range-max'),
         rangeMinValue: document.getElementById('range-min-value'),
         rangeMaxValue: document.getElementById('range-max-value'),
+        batteryCapacityMin: document.getElementById('battery-capacity-min'),
+        batteryCapacityMax: document.getElementById('battery-capacity-max'),
+        batteryCapacityMinValue: document.getElementById('battery-capacity-min-value'),
+        batteryCapacityMaxValue: document.getElementById('battery-capacity-max-value'),
         bodyType: document.getElementById('body-type'),
         drivetrain: document.getElementById('drivetrain'),
         findEvsBtn: document.getElementById('find-evs'),
@@ -26,29 +30,32 @@ document.addEventListener('DOMContentLoaded', function() {
         updateDailyDistanceValue();
         updateSeatsValues();
         updateRangeValues();
+        updateBatteryCapacityValues();
     }
 
     // Event Listeners
-    dom.dailyDistance.addEventListener('input', updateDailyDistanceValue);
-    dom.seatsMin.addEventListener('input', () => updateDualSliderValues('seats'));
-    dom.seatsMax.addEventListener('input', () => updateDualSliderValues('seats'));
-    dom.rangeMin.addEventListener('input', () => updateDualSliderValues('range'));
-    dom.rangeMax.addEventListener('input', () => updateDualSliderValues('range'));
-    dom.findEvsBtn.addEventListener('click', handleFindEvs);
-    dom.resetFiltersBtn.addEventListener('click', resetFilters);
+    if (dom.dailyDistance) dom.dailyDistance.addEventListener('input', updateDailyDistanceValue);
+    if (dom.seatsMin) dom.seatsMin.addEventListener('input', (e) => updateDualSliderValues(e, 'seats'));
+    if (dom.seatsMax) dom.seatsMax.addEventListener('input', (e) => updateDualSliderValues(e, 'seats'));
+    if (dom.rangeMin) dom.rangeMin.addEventListener('input', (e) => updateDualSliderValues(e, 'range'));
+    if (dom.rangeMax) dom.rangeMax.addEventListener('input', (e) => updateDualSliderValues(e, 'range'));
+    if (dom.batteryCapacityMin) dom.batteryCapacityMin.addEventListener('input', updateBatteryCapacityValues);
+    if (dom.batteryCapacityMax) dom.batteryCapacityMax.addEventListener('input', updateBatteryCapacityValues);
+    if (dom.findEvsBtn) dom.findEvsBtn.addEventListener('click', handleFindEvs);
+    if (dom.resetFiltersBtn) dom.resetFiltersBtn.addEventListener('click', resetFilters);
 
     // Update functions
     function updateDailyDistanceValue() {
         dom.dailyDistanceValue.textContent = `${dom.dailyDistance.value} km`;
     }
 
-    function updateDualSliderValues(type) {
+    function updateDualSliderValues(e, type) {
         const minInput = type === 'seats' ? dom.seatsMin : dom.rangeMin;
         const maxInput = type === 'seats' ? dom.seatsMax : dom.rangeMax;
         const minValue = type === 'seats' ? dom.seatsMinValue : dom.rangeMinValue;
         const maxValue = type === 'seats' ? dom.seatsMaxValue : dom.rangeMaxValue;
 
-        const currentInput = event.target;
+        const currentInput = e.target;
         const otherInput = currentInput === minInput ? maxInput : minInput;
         const currentValue = parseInt(currentInput.value);
         const otherValue = parseInt(otherInput.value);
@@ -82,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dom.seatsMax.value = 5;
         dom.rangeMin.value = 200;
         dom.rangeMax.value = 500;
+        if (typeof updateBatteryCapacityValues === 'function') updateBatteryCapacityValues();
         dom.bodyType.selectedIndex = 0;
         dom.drivetrain.selectedIndex = 0;
 
@@ -90,6 +98,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Image error handler
+    if (dom.batteryCapacityMin && dom.batteryCapacityMax) {
+        dom.batteryCapacityMin.addEventListener('input', updateBatteryCapacityValues);
+        dom.batteryCapacityMax.addEventListener('input', updateBatteryCapacityValues);
+    }
     function handleImageError(img) {
         img.onerror = null;
         img.src = 'https://via.placeholder.com/300x180.png?text=EV+Image';
@@ -110,17 +122,34 @@ document.addEventListener('DOMContentLoaded', function() {
         dom.resultsCount.textContent = 'Searching...';
 
         // Prepare request data
+        const bodyType = document.getElementById("body-type").value;
+        const drivetrain = document.getElementById("drivetrain").value;
+        let seatsMin = parseInt(document.getElementById("seats-min").value);
+        let seatsMax = parseInt(document.getElementById("seats-max").value);
+        let rangeMin = parseInt(document.getElementById("range-min").value);
+        let rangeMax = parseInt(document.getElementById("range-max").value);
+        let batteryCapacityMin = parseFloat(document.getElementById("battery-capacity-min").value);
+        let batteryCapacityMax = parseFloat(document.getElementById("battery-capacity-max").value);
+
+        // Ensure min is not greater than max
+        if (seatsMin > seatsMax) seatsMax = seatsMin;
+        if (seatsMax < seatsMin) seatsMin = seatsMax;
+        if (rangeMin > rangeMax) rangeMax = rangeMin;
+        if (rangeMax < rangeMin) rangeMin = rangeMax;
+        if (batteryCapacityMin > batteryCapacityMax) batteryCapacityMax = batteryCapacityMin;
+        if (batteryCapacityMax < batteryCapacityMin) batteryCapacityMin = batteryCapacityMax;
+
         const requestData = {
-            daily_distance: parseInt(dom.dailyDistance.value),
-            seats_min: parseInt(dom.seatsMin.value),
-            seats_max: parseInt(dom.seatsMax.value),
-            body_type: dom.bodyType.value,
-            drivetrain: dom.drivetrain.value,
-            range_min: parseInt(dom.rangeMin.value),
-            range_max: parseInt(dom.rangeMax.value),
+            body_type: bodyType,
+            drivetrain: drivetrain,
+            seats_min: seatsMin,
+            seats_max: seatsMax,
+            range_min: rangeMin,
+            range_max: rangeMax,
+            battery_capacity_min: batteryCapacityMin,
+            battery_capacity_max: batteryCapacityMax,
             top_n: 6
         };
-
         try {
             await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -147,6 +176,14 @@ document.addEventListener('DOMContentLoaded', function() {
             showError();
         } finally {
             dom.loading.style.display = 'none';
+        }
+    }
+    function updateBatteryCapacityValues() {
+        if (dom.batteryCapacityMin && dom.batteryCapacityMinValue) {
+            dom.batteryCapacityMinValue.textContent = `${dom.batteryCapacityMin.value} kWh`;
+        }
+        if (dom.batteryCapacityMax && dom.batteryCapacityMaxValue) {
+            dom.batteryCapacityMaxValue.textContent = `${dom.batteryCapacityMax.value} kWh`;
         }
     }
 

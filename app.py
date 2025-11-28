@@ -1,11 +1,21 @@
+
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import MinMaxScaler
 
+
+
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
+def get_ev_image_url(brand, model):
+    try:
+        brand_clean = str(brand).strip().lower()
+        model_clean = str(model).strip().lower().replace(' ', '-')
+        return f"https://via.placeholder.com/300x180.png?text={brand_clean}+{model_clean}"
+    except Exception:
+        return "https://via.placeholder.com/300x180.png?text=EV+Image"
 
 def load_data():
     df = pd.read_csv('ev.csv')
@@ -35,6 +45,23 @@ def load_data():
     df['image_url'] = df.apply(lambda row: get_ev_image_url(row['brand'], row['model']), axis=1)
     return df
 
+# --- GLOBAL DATA AND SCALER INITIALIZATION ---
+df_global = None
+scaler = None
+FEATURES = [
+    'range_km', 'efficiency_km_per_kWh', 'fast_charging_power_kw_dc',
+    'price_per_km', 'acceleration_0_100_s', 'seats'
+]
+
+def global_init():
+    global df_global, scaler
+    df_global = load_data()
+    scaler = MinMaxScaler()
+    df_for_scaling = df_global[FEATURES].fillna(0)
+    scaler.fit(df_for_scaling)
+
+global_init()
+
 
 def get_ev_image_url(brand, model):
     try:
@@ -51,8 +78,12 @@ def knn_recommend(df, user_input, k=10):
         'price_per_km', 'acceleration_0_100_s', 'seats'
     ]
 
-    scaler = MinMaxScaler()
-    df_scaled = scaler.fit_transform(df[features])
+    # Use global FEATURES and scaler
+    if len(df) < k:
+        k = len(df)
+    if k == 0:
+        return []
+    df_scaled = scaler.transform(df[FEATURES].fillna(0))
 
     input_vector = np.array([[
         user_input['range_min'],
@@ -79,7 +110,17 @@ def index():
     df = load_data()
     body_types = ['Any'] + sorted(df['car_body_type'].dropna().unique().tolist()) if 'car_body_type' in df else ['Any']
     drivetrains = ['Any'] + sorted(df['drivetrain'].dropna().unique().tolist()) if 'drivetrain' in df else ['Any']
-    return render_template('index.html', body_types=body_types, drivetrains=drivetrains)
+    brands = sorted(df['brand'].dropna().unique())
+    battery_types = sorted(df['battery_type'].dropna().unique())
+    segments = sorted(df['segment'].dropna().unique())
+    return render_template(
+        'index.html',
+        body_types=body_types,
+        drivetrains=drivetrains,
+        brands=brands,
+        battery_types=battery_types,
+        segments=segments
+    )
 
 
 @app.route('/api/recommend', methods=['POST'])
@@ -88,28 +129,64 @@ def api_recommend():
         df = load_data()
         data = request.get_json()
         print("Received input:", data)
+        print(f"Initial df shape: {df.shape}")
+
+
+
 
         # Filter body type
         if data.get('body_type') not in ['', None, 'Any']:
+            print(f"Filtering body_type: {data.get('body_type')}")
             df = df[df['car_body_type'].astype(str).str.lower() == data['body_type'].lower()]
+            print(f"After body_type filter: {df.shape}")
 
         # Filter drivetrain
         if data.get('drivetrain') not in ['', None, 'Any']:
+            print(f"Filtering drivetrain: {data.get('drivetrain')}")
             df = df[df['drivetrain'].astype(str).str.lower() == data['drivetrain'].lower()]
+            print(f"After drivetrain filter: {df.shape}")
 
-        # Seat filtering
-        if data.get('seats_min'):
-            df = df[df['seats'] >= int(data['seats_min'])]
-        if data.get('seats_max'):
-            df = df[df['seats'] <= int(data['seats_max'])]
+        # Seat filtering (robust)
+        try:
+            seats_min = int(data.get('seats_min')) if data.get('seats_min') not in [None, '', 'Any'] else None
+            seats_max = int(data.get('seats_max')) if data.get('seats_max') not in [None, '', 'Any'] else None
+            print(f"Filtering seats: min={seats_min}, max={seats_max}")
+            if seats_min is not None:
+                df = df[df['seats'] >= seats_min]
+            if seats_max is not None:
+                df = df[df['seats'] <= seats_max]
+            print(f"After seats filter: {df.shape}")
+        except Exception as e:
+            print('Seat filter error:', e)
 
-        # Range filtering
-        if data.get('range_min'):
-            df = df[df['range_km'] >= int(data['range_min'])]
-        if data.get('range_max'):
-            df = df[df['range_km'] <= int(data['range_max'])]
+        # Range filtering (robust)
+        try:
+            range_min = int(data.get('range_min')) if data.get('range_min') not in [None, '', 'Any'] else None
+            range_max = int(data.get('range_max')) if data.get('range_max') not in [None, '', 'Any'] else None
+            print(f"Filtering range: min={range_min}, max={range_max}")
+            if range_min is not None:
+                df = df[df['range_km'] >= range_min]
+            if range_max is not None:
+                df = df[df['range_km'] <= range_max]
+            print(f"After range filter: {df.shape}")
+        except Exception as e:
+            print('Range filter error:', e)
+
+        # Battery capacity filtering (robust)
+        try:
+            battery_capacity_min = float(data.get('battery_capacity_min')) if data.get('battery_capacity_min') not in [None, '', 'Any'] else None
+            battery_capacity_max = float(data.get('battery_capacity_max')) if data.get('battery_capacity_max') not in [None, '', 'Any'] else None
+            print(f"Filtering battery: min={battery_capacity_min}, max={battery_capacity_max}")
+            if battery_capacity_min is not None:
+                df = df[df['battery_capacity_kWh'] >= battery_capacity_min]
+            if battery_capacity_max is not None:
+                df = df[df['battery_capacity_kWh'] <= battery_capacity_max]
+            print(f"After battery filter: {df.shape}")
+        except Exception as e:
+            print('Battery capacity filter error:', e)
 
         if df.empty:
+            print("No results after filtering!")
             return jsonify([])
 
         knn_input = {
